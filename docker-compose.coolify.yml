@@ -5,6 +5,10 @@ services:
       dockerfile: Dockerfile
     environment:
       CLI_PROXY_CONFIG_B64: ${CLI_PROXY_CONFIG_B64:?CLI_PROXY_CONFIG_B64 is required}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     expose:
       - "8317"
     volumes:
