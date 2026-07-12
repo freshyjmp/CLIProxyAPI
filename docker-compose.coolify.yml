@@ -1,0 +1,15 @@
+services:
+  cli-proxy-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      CLI_PROXY_CONFIG_B64: ${CLI_PROXY_CONFIG_B64:?CLI_PROXY_CONFIG_B64 is required}
+    expose:
+      - "8317"
+    volumes:
+      - cliproxy-auths:/var/lib/cliproxy/auths
+    restart: unless-stopped
+
+volumes:
+  cliproxy-auths:
