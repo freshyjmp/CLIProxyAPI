@@ -9,8 +9,8 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    expose:
-      - "8317"
+    ports:
+      - "100.97.133.20:8317:8317"
     volumes:
       - cliproxy-auths:/var/lib/cliproxy/auths
     restart: unless-stopped
