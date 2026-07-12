@@ -1,4 +1,4 @@
-FROM golang:1.26-bookworm AS builder
+FROM golang:1.26.5-bookworm AS builder
 
 WORKDIR /app
 
@@ -16,22 +16,25 @@ ARG BUILD_DATE=unknown
 
 RUN CGO_ENABLED=1 GOOS=linux go build -buildvcs=false -ldflags="-s -w -X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}' -X 'main.BuildDate=${BUILD_DATE}'" -o ./CLIProxyAPI ./cmd/server/
 
-FROM debian:bookworm
+FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 cliproxy \
+    && useradd --system --uid 10001 --gid cliproxy --home-dir /var/lib/cliproxy cliproxy \
+    && install -d -o cliproxy -g cliproxy -m 0700 /var/lib/cliproxy \
+    && install -d -o cliproxy -g cliproxy -m 0700 /var/lib/cliproxy/auths
 
-RUN mkdir /CLIProxyAPI
+COPY --from=builder /app/CLIProxyAPI /usr/local/bin/cli-proxy-api
+COPY --chown=cliproxy:cliproxy docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-COPY --from=builder ./app/CLIProxyAPI /CLIProxyAPI/CLIProxyAPI
-
-COPY config.example.yaml /CLIProxyAPI/config.example.yaml
-
-WORKDIR /CLIProxyAPI
+USER cliproxy
+WORKDIR /var/lib/cliproxy
 
 EXPOSE 8317
 
-ENV TZ=Asia/Shanghai
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl --fail --silent --show-error http://127.0.0.1:8317/healthz >/dev/null || exit 1
 
-RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo "${TZ}" > /etc/timezone
-
-CMD ["./CLIProxyAPI"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
